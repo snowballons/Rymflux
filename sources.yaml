@@ -1,0 +1,133 @@
+# rymflux/sources.yaml (Corrected for GoldenAudiobook)
+
+sources:
+  - name: "goldenaudiobook"
+    base_url: "https://goldenaudiobook.net"
+    content_type: "audiobook"
+    
+    rules:
+      search:
+        url: "/?s={query}"
+        
+        # UPDATED SELECTORS TO MATCH HTML:
+        item_container_selector: "ul#recent-posts article"
+        title_selector: "h2.title-post a"
+        url_selector: "h2.title-post a"
+
+      details:
+        # ACCURATE RULES for the 'get_details' method
+        author_selector: ".author-info a"
+        description_selector: ".entry-content" # The main content block
+        cover_image_url_selector: ".single-post-thumb img"
+        
+        # Chapter selectors are the most complex
+        # On this site, each chapter is an 'audio' tag inside the main content
+        chapter_container_selector: "audio.wp-audio-shortcode"
+        
+        # The chapter's audio URL is the 'src' attribute of the 'source' tag inside it
+        chapter_url_selector: "source" 
+        
+        # This site doesn't have explicit chapter titles, so we'll generate them.
+        # We don't need a chapter_title_selector for this source.
+
+  - name: "sharedaudiobooks"
+    base_url: "https://sharedaudiobooks.net"
+    content_type: "audiobook"
+    rules:
+      search:
+        url: "/?s={query}"
+        item_container_selector: "article.post"
+        title_selector: "h2.entry-title a"
+        url_selector: "h2.entry-title a"
+      details:
+        author_selector: "div.entry-content > p:nth-of-type(1) > a"
+        description_selector: "div.entry-content"
+        cover_image_url_selector: ".single-post-thumb img"
+        chapter_container_selector: "audio.wp-audio-shortcode"
+        chapter_url_selector: "source"
+
+  - name: "librivox"
+    type: "archive"
+
+  - name: "bagofaudio"
+    base_url: "https://bagofaudio.com"
+    content_type: "audiobook"
+    rules:
+      search:
+        url: "/?s={query}"
+        item_container_selector: "div#content article"
+        title_selector: "h2.entry-title a"
+        url_selector: "h2.entry-title a"
+      details:
+        author_selector: ".author-info a"
+        description_selector: ".entry-content"
+        cover_image_url_selector: ".single-post-thumb img"
+        chapter_container_selector: "audio.wp-audio-shortcode"
+        chapter_url_selector: "source"
+
+  - name: "findaudiobook"
+    base_url: "https://findaudiobook.app" # I notice you changed .club to .app, good catch!
+    content_type: "audiobook"
+    rules:
+      search:
+        url: "/?s={query}"
+        item_container_selector: "div#content article"
+        title_selector: "h2.entry-title a"
+        url_selector: "h2.entry-title a"
+      details:
+        author_selector: ".author-info a"
+        description_selector: ".entry-content"
+        cover_image_url_selector: ".single-post-thumb img"
+        chapter_container_selector: "audio.wp-audio-shortcode"
+        chapter_url_selector: "source"
+
+  - name: "bigaudiobooks"
+    base_url: "https://bigaudiobooks.club"
+    content_type: "audiobook"
+    rules:
+      search:
+        url: "/?s={query}"
+        item_container_selector: "div#content article"
+        title_selector: "h2.entry-title a"
+        url_selector: "h2.entry-title a"
+      details:
+        author_selector: ".author-info a"
+        description_selector: ".entry-content"
+        cover_image_url_selector: ".single-post-thumb img"
+        chapter_container_selector: "audio.wp-audio-shortcode"
+        chapter_url_selector: "source"
+
+  - name: "fulllengthaudiobooks"
+    base_url: "https://fulllengthaudiobooks.net"
+    content_type: "audiobook"
+    rules:
+      search:
+        url: "/?s={query}"
+        item_container_selector: "div#content article"
+        title_selector: "h2.entry-title a"
+        url_selector: "h2.entry-title a"
+      details:
+        author_selector: ".author-info a"
+        description_selector: ".entry-content"
+        cover_image_url_selector: ".single-post-thumb img"
+        chapter_container_selector: "audio.wp-audio-shortcode"
+        chapter_url_selector: "source"
+
+  - name: "primeaudiobooks"
+    base_url: "https://primeaudiobooks.club"
+    content_type: "audiobook"
+    rules:
+      search:
+        url: "/?s={query}"
+        item_container_selector: "div#content article"
+        title_selector: "h2.entry-title a"
+        url_selector: "h2.entry-title a"
+      details:
+        author_selector: ".author-info a"
+        description_selector: ".entry-content"
+        cover_image_url_selector: ".single-post-thumb img"
+        chapter_container_selector: "audio.wp-audio-shortcode"
+        chapter_url_selector: "source"
+
+
+
