@@ -8,12 +8,12 @@ dependencies = [
     "httpx[http2]",
     "beautifulsoup4",
     "PyYAML",
-    "typer",
     "rich",
     "questionary",
     "nest-asyncio>=1.6.0",
     "pyqt6>=6.9.1",
     "prompt-toolkit>=3.0.51",
+    "pyqt6-fluent-widgets>=1.8.3",
 ]
 
 [project.scripts]

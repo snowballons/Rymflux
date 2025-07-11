@@ -34,8 +34,8 @@ class ModernPlayer(QWidget):
     MARGIN = 10
     DEFAULT_COVER_TEXT = "No Cover Available"
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self._is_playing = False  # Track playback state
         self._init_ui()
         self._connect_signals()
