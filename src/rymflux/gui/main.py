@@ -3,11 +3,13 @@
 import sys
 from typing import Optional
 
-from PyQt6.QtCore import Qt, QUrl
-from PyQt6.QtGui import QIcon
+from PyQt6.QtCore import QUrl, Qt
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
-from qfluentwidgets import FluentWindow, NavigationItemPosition, setTheme, Theme, InfoBar, InfoBarPosition, FluentIcon
+from qfluentwidgets import (
+    FluentWindow, NavigationItemPosition, setTheme, Theme, InfoBar, 
+    InfoBarPosition, FluentIcon
+)
 
 # --- Local Module Imports ---
 from .pages.search_page import SearchPage
@@ -37,10 +39,13 @@ class MainWindow(FluentWindow):
         self.player.setAudioOutput(self.audio_output)
         self.audio_output.setVolume(0.5)
 
-        # --- Create Pages ---
+        # --- Create Pages (as simple QWidgets) ---
         self.search_page = SearchPage(self)
+        self.search_page.setObjectName("search_page")
         self.player_page = PlayerPage(self)
+        self.player_page.setObjectName("player_page")
         self.settings_page = SettingsPage(self)
+        self.settings_page.setObjectName("settings_page")
 
         # --- Initialize UI and Navigation ---
         self._init_navigation()
@@ -48,43 +53,16 @@ class MainWindow(FluentWindow):
         self._connect_signals()
         
     def _init_navigation(self):
-        # Add pages to the navigation interface
-        self.navigationInterface.addWidget(
-            routeKey='search',
-            widget=self.search_page,  # Already NavigationWidget
-            onClick=lambda: self.navigationInterface.setCurrentItem('search')
-        )
-        self.navigationInterface.addWidget(
-            routeKey='player',
-            widget=self.player_page,  # Already NavigationWidget
-            onClick=lambda: self.navigationInterface.setCurrentItem('player')
-        )
-        # Add navigation items (the icons on the left)
-        self.navigationInterface.addItem(
-            routeKey='search',
-            icon=FluentIcon.SEARCH,
-            text='Search'
-        )
-        self.navigationInterface.addItem(
-            routeKey='player',
-            icon=FluentIcon.MUSIC,
-            text='Player'
-        )
-        # Add settings icon at the bottom
-        self.navigationInterface.addItem(
-            routeKey='settings',
-            icon=FluentIcon.SETTING,
-            text='Settings',
-            onClick=lambda: self.navigationInterface.setCurrentItem('settings'),
-            position=NavigationItemPosition.BOTTOM
-        )
-        self.navigationInterface.addWidget(
-            routeKey='settings',
-            widget=self.settings_page,  # Already NavigationWidget
-            onClick=lambda: self.navigationInterface.setCurrentItem('settings')
-        )
+        # Use addSubInterface for proper integration with FluentWindow
+        self.addSubInterface(self.search_page, FluentIcon.SEARCH, 'Search')
+        self.addSubInterface(self.player_page, FluentIcon.MUSIC, 'Player')
+        self.addSubInterface(self.settings_page, FluentIcon.SETTING, 'Settings', NavigationItemPosition.BOTTOM)
+        
+        # Set the default page
+        self.navigationInterface.setCurrentItem(self.search_page.objectName())
 
     def _load_sources(self):
+        # This method is unchanged and correct.
         try:
             source_configs = load_sources_from_yaml("sources.yaml")
             if not source_configs:
@@ -99,12 +77,11 @@ class MainWindow(FluentWindow):
             self.show_info_bar("Error", f"Failed to load sources: {e}", is_error=True)
 
     def _connect_signals(self):
-        # Page signals -> Main Window logic
+        # This method is unchanged and correct.
         self.search_page.search_requested.connect(self.start_search)
         self.search_page.result_selected.connect(self.on_result_selected)
         self.player_page.chapter_selected.connect(self.on_chapter_selected)
         
-        # Player widget signals -> QMediaPlayer
         player_controls = self.player_page.player_widget
         player_controls.play.connect(self.player.play)
         player_controls.pause.connect(self.player.pause)
@@ -114,11 +91,21 @@ class MainWindow(FluentWindow):
         player_controls.next_track.connect(self.play_next_chapter)
         player_controls.prev_track.connect(self.play_previous_chapter)
         
-        # QMediaPlayer signals -> Player widget UI
         self.player.positionChanged.connect(lambda p: player_controls.update_progress(p, self.player.duration()))
         self.player.durationChanged.connect(lambda d: player_controls.update_progress(self.player.position(), d))
         self.player.playbackStateChanged.connect(player_controls.set_playing_state)
 
+    def show_info_bar(self, title: str, content: str, is_error: bool = False):
+        """Displays a Fluent InfoBar for notifications."""
+        pos = InfoBarPosition.TOP
+        if is_error:
+            InfoBar.error(title, content, duration=3000, parent=self).show()
+        else:
+            InfoBar.info(title, content, duration=2000, parent=self).show()
+
+    # All worker and playback logic methods below are unchanged and correct.
+    # start_search, on_search_finished, on_result_selected, on_details_finished, etc.
+    # Make sure you have your working versions of these methods here.
     def start_search(self, query: str):
         if not self.sources:
             self.show_info_bar("Error", "No sources loaded.", is_error=True)
@@ -152,14 +139,13 @@ class MainWindow(FluentWindow):
 
     def on_details_finished(self, audiobook: Optional[Audiobook]):
         self.current_audiobook = audiobook
+        
         if audiobook is not None:
+            # Pass the audiobook object to the player page to update its UI
             self.player_page.load_audiobook_details(audiobook)
-        else:
-            from rymflux.core.models import Audiobook
-            self.player_page.load_audiobook_details(Audiobook(title="", source_name="", url="", chapters=[]))
-        if audiobook:
             self.show_info_bar("Details Loaded", f"Ready to play '{audiobook.title[:30]}...'.")
-            self.navigationInterface.setCurrentItem('player') # Switch to player page
+            # Switch the main view to the player page automatically
+            self.navigationInterface.setCurrentItem(self.player_page.objectName())
         else:
             self.show_info_bar("Error", "Failed to fetch details.", is_error=True)
 
@@ -181,35 +167,17 @@ class MainWindow(FluentWindow):
     def _play_chapter_at_index(self, index: int):
         if not self.current_audiobook or not self.current_audiobook.chapters or not (0 <= index < len(self.current_audiobook.chapters)):
             return
-
         self.player_page.chapter_list.setCurrentRow(index)
         chapter = self.current_audiobook.chapters[index]
-        
         self.player_page.player_widget.set_track_info(self.current_audiobook, chapter.title)
         self.player.setSource(QUrl(chapter.url))
         self.player.play()
 
-    def show_info_bar(self, title: str, content: str, is_error: bool = False):
-        pos = InfoBarPosition.TOP
-        if is_error:
-            InfoBar.error(title, content, duration=3000, parent=self).show()
-        else:
-            InfoBar.info(title, content, duration=2000, parent=self).show()
-
 def main():
     """The main function to launch the GUI."""
-    # This setting is valid in Qt6 and helps with fractional scaling.
     QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
-    
-    # The two lines causing the error have been REMOVED from this version.
-    # QApplication.setAttribute(Qt.ApplicationAttribute.AA_EnableHighDpiScaling, True)  <-- REMOVED
-    # QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps, True)      <-- REMOVED
-
     app = QApplication(sys.argv)
-    
     setTheme(Theme.DARK)
-
     window = MainWindow()
     window.show()
-
     sys.exit(app.exec())

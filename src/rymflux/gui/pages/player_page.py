@@ -5,14 +5,13 @@ from PyQt6.QtCore import pyqtSignal
 
 from rymflux.core.models import Audiobook
 from ..player import ModernPlayer # Note the relative import
-from qfluentwidgets import NavigationWidget
 
-class PlayerPage(NavigationWidget):
+class PlayerPage(QWidget):
     """ The page for displaying audiobook details and chapters. """
     chapter_selected = pyqtSignal(int)
 
     def __init__(self, parent=None):
-        super().__init__(parent=parent, isSelectable=False)
+        super().__init__(parent=parent)
         
         main_layout = QVBoxLayout(self)
         

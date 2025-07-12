@@ -2,17 +2,17 @@
 
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QListWidget
 from PyQt6.QtCore import pyqtSignal
-from qfluentwidgets import LineEdit, PrimaryPushButton, NavigationWidget
+from qfluentwidgets import LineEdit, PrimaryPushButton
 
 from rymflux.core.models import AudioItem
 
-class SearchPage(NavigationWidget):
+class SearchPage(QWidget):
     """ The page for searching and displaying results. """
     search_requested = pyqtSignal(str)
     result_selected = pyqtSignal(int)
 
     def __init__(self, parent=None):
-        super().__init__(parent=parent, isSelectable=False)
+        super().__init__(parent=parent)
         
         main_layout = QVBoxLayout(self)
         

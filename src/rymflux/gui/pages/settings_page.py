@@ -2,11 +2,10 @@
 
 from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout
 from PyQt6.QtCore import Qt
-from qfluentwidgets import NavigationWidget
 
-class SettingsPage(NavigationWidget):
+class SettingsPage(QWidget):
     def __init__(self, parent=None):
-        super().__init__(parent=parent, isSelectable=False)
+        super().__init__(parent=parent)
         
         layout = QVBoxLayout(self)
         label = QLabel("Settings will go here.\n(e.g., Theme selection, Source Management)")
