@@ -6,6 +6,7 @@ from typing import Optional
 from PyQt6.QtCore import QUrl, Qt
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
+from PyQt6.QtGui import QPixmap
 from qfluentwidgets import (
     FluentWindow, NavigationItemPosition, setTheme, Theme, InfoBar, 
     InfoBarPosition, FluentIcon
@@ -15,7 +16,7 @@ from qfluentwidgets import (
 from .pages.search_page import SearchPage
 from .pages.player_page import PlayerPage
 from .pages.settings_page import SettingsPage
-from .workers import SearchWorker, DetailsWorker
+from .workers import SearchWorker, DetailsWorker, CoverArtWorker
 from rymflux.core.config import load_sources_from_yaml
 from rymflux.core.sources import CustomSource, ArchiveSource, AudioSource
 from rymflux.core.models import AudioItem, Audiobook
@@ -23,6 +24,7 @@ from rymflux.core.models import AudioItem, Audiobook
 class MainWindow(FluentWindow):
     def __init__(self):
         super().__init__()
+        print("Initializing MainWindow")
         self.setWindowTitle("Rymflux")
         self.resize(1100, 800)
 
@@ -32,6 +34,7 @@ class MainWindow(FluentWindow):
         self.details_worker: Optional[DetailsWorker] = None
         self.current_search_results: list[AudioItem] = []
         self.current_audiobook: Optional[Audiobook] = None
+        self.cover_art_worker: Optional[CoverArtWorker] = None
         
         # --- Media Player Setup ---
         self.player = QMediaPlayer()
@@ -68,11 +71,12 @@ class MainWindow(FluentWindow):
             if not source_configs:
                 self.show_info_bar("Warning", "sources.yaml not found or is empty.")
                 return
-            self.sources = [
-                ArchiveSource(name=c["name"], base_url="") if c.get("type") == "archive"
-                else CustomSource(name=c["name"], base_url=c["base_url"], rules=c["rules"])
-                for c in source_configs
-            ]
+            for c in source_configs:
+                source_type = c.get("type", "custom")
+                if source_type == "archive":
+                    self.sources.append(ArchiveSource(name=c["name"], base_url=""))
+                else:
+                    self.sources.append(CustomSource(name=c["name"], base_url=c["base_url"], rules=c["rules"]))
         except Exception as e:
             self.show_info_bar("Error", f"Failed to load sources: {e}", is_error=True)
 
@@ -143,6 +147,15 @@ class MainWindow(FluentWindow):
         if audiobook is not None:
             # Pass the audiobook object to the player page to update its UI
             self.player_page.load_audiobook_details(audiobook)
+            # --- NEW COVER ART LOGIC ---
+            if audiobook and audiobook.cover_image_url:
+                self.player_page.player_widget.show_cover_art_loading()
+                self.cover_art_worker = CoverArtWorker(audiobook.cover_image_url)
+                self.cover_art_worker.finished.connect(self.on_cover_art_loaded)
+                self.cover_art_worker.start()
+            else:
+                # If no URL, just clear the cover art
+                self.player_page.player_widget.set_cover_art(QPixmap())
             self.show_info_bar("Details Loaded", f"Ready to play '{audiobook.title[:30]}...'.")
             # Switch the main view to the player page automatically
             self.navigationInterface.setCurrentItem(self.player_page.objectName())
@@ -172,6 +185,9 @@ class MainWindow(FluentWindow):
         self.player_page.player_widget.set_track_info(self.current_audiobook, chapter.title)
         self.player.setSource(QUrl(chapter.url))
         self.player.play()
+
+    def on_cover_art_loaded(self, pixmap: QPixmap):
+        self.player_page.player_widget.set_cover_art(pixmap)
 
 def main():
     """The main function to launch the GUI."""

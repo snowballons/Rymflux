@@ -1,9 +1,12 @@
 import abc
+import asyncio
 from typing import List, Optional, Union, Dict, Any
 import httpx
 from bs4 import BeautifulSoup
+import yt_dlp
 from .models import AudioItem, Audiobook, Podcast, Chapter, Episode
 from .logging import get_logger
+from .config import load_sources_from_yaml
 
 logger = get_logger(__name__)
 
@@ -190,8 +193,7 @@ class ArchiveSource(AudioSource):
 
     async def get_details(self, item: AudioItem) -> Optional[Audiobook]:
         identifier = item.url.split('/')[-1].strip()
-        if not identifier: 
-            return None
+        if not identifier: return None
         
         metadata_url = self.metadata_url_template.format(identifier=identifier)
         
@@ -211,17 +213,77 @@ class ArchiveSource(AudioSource):
 
             if not chapters:
                 return None
-                
+            
             chapters.sort(key=lambda c: c.title)
-                
+            
+            # --- THIS IS THE UPGRADE ---
+            # Construct the cover art URL using the archive.org thumbnail service
+            cover_url = f"https://archive.org/services/img/{identifier}"
+            
             return Audiobook(
                 title=metadata.get("metadata", {}).get("title", item.title),
                 author=metadata.get("metadata", {}).get("creator", "Unknown"),
                 description=metadata.get("metadata", {}).get("description", ""),
                 url=item.url,
                 source_name=self.name,
-                chapters=chapters
+                chapters=chapters,
+                cover_image_url=cover_url  # Set the cover art URL
             )
         except Exception as e:
             logger.error(f"Error getting details from Archive.org for {identifier}: {e}")
             return None
+
+
+def get_source(source_config: Dict[str, Any]) -> Optional[AudioSource]:
+    """
+    Factory function that creates and returns an AudioSource instance based on
+    the provided configuration dictionary.
+    """
+    if not isinstance(source_config, dict):
+        logger.error(f"Source config is not a dict: {source_config}")
+        return None
+    source_type = source_config.get("type")
+    name = source_config.get("name")
+    base_url = source_config.get("base_url")
+    # Defensive: Only require base_url for custom/youtube, not archive
+    if source_type == "archive":
+        if not name:
+            logger.error(f"Archive source config missing required fields: {source_config}")
+            return None
+        # base_url is not used for archive, but ArchiveSource expects a string
+        return ArchiveSource(str(name), base_url or "")
+    if not all([source_type, name, base_url]):
+        logger.error(f"Source config missing required fields: {source_config}")
+        return None
+    if source_type == "custom":
+        rules = source_config.get("rules")
+        if not rules:
+            logger.error(f"Custom source '{name}' is missing 'rules'.")
+            return None
+        return CustomSource(str(name), str(base_url), rules)
+    elif source_type == "youtube":
+        return None # Removed YouTubeSource, so return None
+    else:
+        logger.warning(f"Unknown source type: '{source_type}'")
+        return None
+
+async def get_all_sources(filepath: str) -> List[AudioSource]:
+    """
+    Loads all source configurations from a YAML file and returns a list of
+    initialized AudioSource objects.
+    """
+    source_configs = load_sources_from_yaml(filepath)
+    
+    sources = []
+    for config in source_configs:
+        source = get_source(config)
+        if source:
+            sources.append(source)
+            
+    return sources
+
+async def close_all_sources(sources: List[AudioSource]):
+    """Gracefully closes all provided audio sources."""
+    for source in sources:
+        await source.close()
+
